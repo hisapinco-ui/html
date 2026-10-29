@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Parkline Motors | Car showcase</title>
+  <meta name="description" content="Browse the Parkline Motors lineup, compare specs and try each car in different paint colors.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Shared gradients used by every car illustration -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fff" stop-opacity=".22"/>
+        <stop offset=".45" stop-color="#fff" stop-opacity="0"/>
+        <stop offset="1" stop-color="#000" stop-opacity=".34"/>
+      </linearGradient>
+      <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#2a3a49"/>
+        <stop offset="1" stop-color="#0f1822"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <a class="skip" href="#lineup">Skip to the lineup</a>
+
+  <header class="site-header">
+    <a class="wordmark" href="#top">Parkline Motors</a>
+    <nav aria-label="Main">
+      <a href="#lineup">Lineup</a>
+      <a href="#about">About</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <h1 id="hero-title">Pick a car. Pick its paint.</h1>
+        <p>Browse the lineup, compare the numbers and open any model for its full spec sheet.</p>
+        <a class="btn primary" href="#lineup">Explore cars</a>
+      </div>
+
+      <div class="hero-stage" id="hero" aria-live="polite">
+        <!-- filled by app.js -->
+      </div>
+    </section>
+
+    <section class="lineup" id="lineup" aria-labelledby="lineup-title">
+      <div class="lineup-head">
+        <h2 id="lineup-title">The lineup</h2>
+        <div class="controls">
+          <div class="chips" id="filters" role="group" aria-label="Filter by body type"></div>
+          <label class="sort">
+            <span>Sort by</span>
+            <select id="sort">
+              <option value="featured">Featured</option>
+              <option value="price-asc">Price, low to high</option>
+              <option value="price-desc">Price, high to low</option>
+              <option value="power">Power</option>
+              <option value="accel">Quickest 0 to 100</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <p class="count" id="count" aria-live="polite"></p>
+      <div class="grid" id="grid"></div>
+    </section>
+
+    <section class="about" id="about" aria-labelledby="about-title">
+      <h2 id="about-title">About this page</h2>
+      <p>Parkline Motors is a sample dealership. The cars, brands and numbers on this page are made up for the demo, and the illustrations are drawn in code.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Sample data for design purposes only.</p>
+  </footer>
+
+  <dialog id="detail" aria-labelledby="detail-title">
+    <div class="detail" id="detail-body"></div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
