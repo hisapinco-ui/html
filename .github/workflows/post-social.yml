@@ -1,0 +1,71 @@
+name: Post to Instagram and Facebook
+
+# Run it from the Actions tab: choose a file that is already pushed to this repo,
+# type the caption, and leave "Dry run" ticked the first time. A dry run checks the
+# tokens and the media link and posts nothing.
+on:
+  workflow_dispatch:
+    inputs:
+      media_path:
+        description: "Approved file in this repo, for example posts/test.jpg (.jpg for Instagram, .mp4 for video)"
+        required: true
+        type: string
+      caption:
+        description: "Caption for both posts"
+        required: true
+        type: string
+      targets:
+        description: "Where to post"
+        required: true
+        type: choice
+        default: both
+        options:
+          - both
+          - instagram
+          - facebook
+      dry_run:
+        description: "Dry run: check everything, post nothing"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: social-post
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Check the file path
+        env:
+          MEDIA_PATH: ${{ inputs.media_path }}
+        run: |
+          case "$MEDIA_PATH" in
+            posts/*) ;;
+            *) echo "The file must be inside the posts/ folder."; exit 1 ;;
+          esac
+          case "$MEDIA_PATH" in
+            *..*) echo "The path cannot contain '..'."; exit 1 ;;
+          esac
+          test -f "$MEDIA_PATH" || { echo "No file at $MEDIA_PATH on this branch."; exit 1; }
+
+      - name: Post
+        env:
+          MEDIA_PATH: ${{ inputs.media_path }}
+          MEDIA_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/${{ inputs.media_path }}
+          CAPTION: ${{ inputs.caption }}
+          TARGETS: ${{ inputs.targets }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          IG_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          FB_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+          IG_ACCOUNT_ID: "17841416223989634"
+          FB_PAGE_ID: "1165039156700525"
+        run: python3 scripts/post_social.py
