@@ -11,7 +11,7 @@ Environment:
   CAPTION           text for the post
   TARGETS           both | instagram | facebook
   DRY_RUN           "true" checks tokens and the media link but posts nothing
-  IG_TOKEN          Instagram access token (repository secret)
+  IG_TOKEN          Instagram access token (repository secret); optional, FB_TOKEN is the fallback
   IG_ACCOUNT_ID     Instagram account ID
   FB_TOKEN          system user token for the Page (repository secret)
   FB_PAGE_ID        Facebook Page ID
@@ -87,10 +87,10 @@ def check_media_url(url):
         ) from None
 
 
-def wait_until_ready(container_id, token):
+def wait_until_ready(host, container_id, token):
     """Videos take a while to process. Images are usually ready at once."""
     for _ in range(POLL_TRIES):
-        status = call("GET", IG_HOST, container_id, {"fields": "status_code", "access_token": token})
+        status = call("GET", host, container_id, {"fields": "status_code", "access_token": token})
         code = status.get("status_code", "")
         if code == "FINISHED":
             return
@@ -100,9 +100,33 @@ def wait_until_ready(container_id, token):
     raise PostError("Instagram was still processing the media after waiting. Try again in a few minutes.")
 
 
-def post_instagram(token, account_id, media_url, kind, caption, dry_run):
-    who = call("GET", IG_HOST, account_id, {"fields": "username", "access_token": token})
-    log(f"Instagram: token works for @{who.get('username', '?')}")
+def instagram_access(ig_token, fb_token, account_id):
+    """Find a token that can reach the Instagram account.
+
+    The Instagram token is tried first. If Meta rejects it, the Facebook system user
+    token is tried (the Instagram account must be assigned to that system user).
+    """
+    attempts = []
+    if ig_token:
+        attempts.append((IG_HOST, ig_token, "Instagram token"))
+    if fb_token:
+        attempts.append((FB_HOST, fb_token, "Facebook system user token"))
+    problems = []
+    for host, token, label in attempts:
+        try:
+            who = call("GET", host, account_id, {"fields": "username", "access_token": token})
+        except PostError as err:
+            problems.append(f"{label}: {err}")
+            log(f"Instagram: {label} did not work, trying the next one if there is one")
+            annotate("warning", "Instagram token problem", f"{label}: {err}")
+            continue
+        log(f"Instagram: {label} works for @{who.get('username', '?')}")
+        return host, token
+    raise PostError(" | ".join(problems) or "No Instagram or Facebook token was provided.")
+
+
+def post_instagram(ig_token, fb_token, account_id, media_url, kind, caption, dry_run):
+    host, token = instagram_access(ig_token, fb_token, account_id)
     if dry_run:
         return {"status": "checked"}
 
@@ -112,14 +136,14 @@ def post_instagram(token, account_id, media_url, kind, caption, dry_run):
     else:
         params["media_type"] = "REELS"
         params["video_url"] = media_url
-    container_id = call("POST", IG_HOST, f"{account_id}/media", params)["id"]
-    wait_until_ready(container_id, token)
+    container_id = call("POST", host, f"{account_id}/media", params)["id"]
+    wait_until_ready(host, container_id, token)
     published = call(
-        "POST", IG_HOST, f"{account_id}/media_publish",
+        "POST", host, f"{account_id}/media_publish",
         {"creation_id": container_id, "access_token": token},
     )
     media_id = published["id"]
-    details = call("GET", IG_HOST, media_id, {"fields": "permalink", "access_token": token})
+    details = call("GET", host, media_id, {"fields": "permalink", "access_token": token})
     return {"status": "posted", "id": media_id, "url": details.get("permalink", "")}
 
 
@@ -199,7 +223,8 @@ def main():
     if do_instagram:
         try:
             results["Instagram"] = post_instagram(
-                require("IG_TOKEN"), require("IG_ACCOUNT_ID"), media_url, kind, caption, dry_run
+                os.environ.get("IG_TOKEN", "").strip(), os.environ.get("FB_TOKEN", "").strip(),
+                require("IG_ACCOUNT_ID"), media_url, kind, caption, dry_run,
             )
         except PostError as err:
             results["Instagram"] = {"status": "failed", "error": str(err)}
