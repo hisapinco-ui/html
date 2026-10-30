@@ -43,6 +43,12 @@ def log(message):
     print(message, flush=True)
 
 
+def annotate(level, title, message):
+    """Show a message as a GitHub annotation on the run page (and readable through the API)."""
+    text = str(message).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+    print(f"::{level} title={title}::{text}", flush=True)
+
+
 def call(method, host, path, params):
     """Call the Graph API. Error text never includes the request URL or any token."""
     url = f"{host}/{VERSION}/{path}"
@@ -208,6 +214,10 @@ def main():
     for target, outcome in results.items():
         detail = outcome.get("url") or outcome.get("error") or ""
         log(f"{target}: {outcome['status']} {detail}".rstrip())
+        if outcome["status"] == "failed":
+            annotate("error", f"{target} failed", detail)
+        else:
+            annotate("notice", f"{target} {outcome['status']}", detail or "ok")
     log("RESULT " + json.dumps(results))
     write_summary(results, dry_run)
     return 1 if any(o["status"] == "failed" for o in results.values()) else 0
@@ -218,4 +228,5 @@ if __name__ == "__main__":
         sys.exit(main())
     except PostError as err:
         log(f"Stopped: {err}")
+        annotate("error", "Stopped before posting", err)
         sys.exit(1)
